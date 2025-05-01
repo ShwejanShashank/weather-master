@@ -1,0 +1,7 @@
+com\example\details\service\WeatherServiceImpl.class
+com\example\details\DetailsApplication.class
+com\example\details\controller\WeatherController.class
+com\example\details\config\RestTemplateConfig.class
+com\example\details\pojo\City.class
+com\example\details\service\WeatherService.class
+com\example\details\config\EndpointConfig.class

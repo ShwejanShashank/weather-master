@@ -1,0 +1,3 @@
+com\example\common\response\GeneralResponseAdvice.class
+com\example\common\config\MvcConfig.class
+com\example\common\domain\GeneralResponse.class
