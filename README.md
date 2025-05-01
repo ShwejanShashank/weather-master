@@ -1,17 +1,10 @@
- Step 1: Integrating Student Management Service (SMS) into Spring Cloud Project
+ # Step 1: Integrating Student Management Service (SMS) into Spring Cloud Project
 As the first step in transforming our standalone Student Management Service (SMS) into a microservice-based architecture using Spring Cloud, I successfully added the SMS module into the existing microservices project structure.
- Tasks Completed:
+## Tasks Completed:
 Moved SMS into the Microservices Workspace:
-
 The sms module was copied into the microservices parent project directory to ensure it follows the shared build and configuration structure.
-
 Modified pom.xml to Add Spring Cloud Dependencies:
-
 Added the required dependencies in the sms service’s pom.xml:
-
-xml
-Copy
-Edit
 <!-- Spring Cloud Dependencies -->
 <dependency>
     <groupId>org.springframework.cloud</groupId>
@@ -21,16 +14,13 @@ Edit
     <groupId>org.springframework.cloud</groupId>
     <artifactId>spring-cloud-starter-config</artifactId>
 </dependency>
-Enabled Service Discovery and Config Client:
 
+## Enabled Service Discovery and Config Client:
 Annotated the main application class with:
+## @EnableDiscoveryClient
+## @SpringBootApplication
 
-java
-Copy
-Edit
-@EnableDiscoveryClient
-@SpringBootApplication
-Updated application.properties / application.yml:
+## Updated application.properties:
 
 Replaced local properties with:
 Added sms-dev properties in weather-config-repo
