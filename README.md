@@ -1,14 +1,15 @@
-#  Student Management Microservices Architecture with Spring Cloud
 
-This project demonstrates how a standalone **Student Management Service (SMS)** was transformed into a **Spring Cloud microservices architecture**. It integrates service discovery, config server, circuit breaking, monitoring, logging, and interactive API documentation.
+# Step 1: Integrating Student Management Service (SMS) into Spring Cloud Project
+As the first step in transforming our standalone Student Management Service (SMS) into a microservice-based architecture using Spring Cloud, I successfully added the SMS module into the existing microservices project structure.
+## Tasks Completed:
+1.Moved SMS into the Microservices Workspace:
 
----
+2.The sms module was copied into the microservices parent project directory to ensure it follows the shared build and configuration structure.
 
-##  Step 1: Integrating SMS into Microservices Workspace
+3.Modified pom.xml to Add Spring Cloud Dependencies:
 
-✅ **Moved SMS into microservices workspace**  
-✅ **Modified `pom.xml`** to include:
-```xml
+4.Added the required dependencies in the sms service’s pom.xml:
+
 <!-- Spring Cloud Dependencies -->
 <dependency>
     <groupId>org.springframework.cloud</groupId>
@@ -18,194 +19,185 @@ This project demonstrates how a standalone **Student Management Service (SMS)** 
     <groupId>org.springframework.cloud</groupId>
     <artifactId>spring-cloud-starter-config</artifactId>
 </dependency>
-```
 
-✅ **Enabled Discovery and Config Client**
-```java
-@EnableDiscoveryClient
-@SpringBootApplication
-```
+## 5.Enabled Service Discovery and Config Client:
+## 6.Annotated the main application class with:
+## @EnableDiscoveryClient
+## @SpringBootApplication
 
-✅ **Externalized Configuration** to [Weather Config Repo](#):  
-- Moved `application.properties` to `student-service.yml` in Git-backed config server  
-- Properties are loaded via Spring Cloud Config Server
+## 7.Updated application.properties:
 
-✅ **Verified**:
-- SMS registers with **Eureka Discovery Server**
-- Properties are loaded remotely
+Replaced local properties with:
+Added sms-dev properties in weather-config-repo
+Moved Properties to Config Server( weather-config repo aka properties)
+The original properties (like server.port, datasource, etc.) were moved from local application.properties into the centralized Config Server repo, under student-service.yml.
+Verified Service Registration and Externalized Config:
+On running, the sms service:
+Registers itself with Eureka Discovery Server
+Loads its properties from Spring Cloud Config Server
 
-📸 _Screenshots_:
-![Eureka](https://github.com/user-attachments/assets/14b060a1-faa1-4923-bcdb-c4cf337ff403)
-![Config Server](https://github.com/user-attachments/assets/e5c141b1-edd5-4606-8d65-830b87c9d962)
+## Screeshots:
+![image](https://github.com/user-attachments/assets/14b060a1-faa1-4923-bcdb-c4cf337ff403)
+![image](https://github.com/user-attachments/assets/e5c141b1-edd5-4606-8d65-830b87c9d962)
 
----
+# Step2. Built a Search Service with Ribbon, RestTemplate, and CompletableFuture
+I created a search microservice that connects to other services using Ribbon (client-side load balancing).
 
-##  Step 2: Created Search Service with Ribbon, RestTemplate & CompletableFuture
+I configured a @LoadBalanced RestTemplate bean so that I could use service names like http://sms and http://details instead of hardcoded IPs or ports.
 
-✅ **Ribbon** for client-side load balancing  
-✅ **@LoadBalanced RestTemplate** used for service-to-service calls  
-✅ **Parallel service calls** using `CompletableFuture.supplyAsync()`
+Inside the SearchService, I used CompletableFuture.supplyAsync() to parallelize service calls:
 
-### Services Called:
-- `http://sms/api/students`
-- `http://details/port`
+## One call to the SMS service to get a list of students via /api/students
+## One call to the Details service via /details/port using:
 
-✅ **GeneralResponse Wrapper** standardizes output
+restTemplate.getForObject("http://details/port", String.class);
+I created a wrapper class GeneralResponse to standardize the API output with:
+code (e.g., 200)
+timestamp
+data (merged result)
 
-📸 _Screenshot_:  
-![Search Service](https://github.com/user-attachments/assets/e200bce4-899a-4b4d-a2a5-783c315d212a)
+I combined the results of both service calls using CompletableFuture.allOf(...)
+The final response from /search returns a JSON containing:
 
----
+Student data from SMS
+Port info from Details
 
-##  Step 3: Circuit Breaker with Hystrix
+## ScreenShot:
+![image](https://github.com/user-attachments/assets/e200bce4-899a-4b4d-a2a5-783c315d212a)
 
-✅ Added Hystrix Dependency:
-```xml
+## Step3. Integrated Hystrix for Circuit Breaking in the Search Service
+*I added Hystrix to my Search microservice to make it resilient to failures in downstream services.
+*I updated the pom.xml to include:
 <dependency>
   <groupId>org.springframework.cloud</groupId>
   <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
 </dependency>
-```
+I enabled Hystrix globally by adding @EnableCircuitBreaker in SearchApplication.java.
+In the SearchService, I applied @HystrixCommand to the asynchronous methods that call:
 
-✅ Enabled Circuit Breaker:
-```java
-@EnableCircuitBreaker
-```
+the SMS service (/api/students)
+the Details service (/details/port)
 
-✅ **@HystrixCommand** on service calls  
-✅ **Fallbacks** implemented:
-- Empty student list when SMS is down
-- `"Unknown"` when Details service is down
+I defined fallback methods to ensure the service responds gracefully even when another service is down:
 
-📸 _Screenshot_:  
-![Hystrix](https://github.com/user-attachments/assets/8912f558-b80a-41b9-be3b-5890631da14a)
+If SMS is unavailable, it returns an empty list of students.
+If Details is unavailable, it returns "Unknown" for the port.
 
----
+## Screenshot:
+![image](https://github.com/user-attachments/assets/8912f558-b80a-41b9-be3b-5890631da14a)
 
-##  Step 4: Encrypted Credentials with Keystore
+# Step4. Secured Sensitive Properties Using a Custom Keystore and Encryption
+I created my own Java Keystore (.keystore) using the keytool command to securely handle sensitive credentials like DB username and password.
 
-✅ Created keystore using:
-```bash
-keytool -genkeypair -alias config-server-key -keyalg RSA -keysize 2048 \
-  -storetype PKCS12 -keystore config-server.p12 -validity 3650
-```
+ command I used:
+ ### keytool -genkeypair -alias config-server-key -keyalg RSA -keysize 2048 -storetype PKCS12 -keystore config-server.p12 -validity 3650
+I placed the keystore file in the config-server/src/main/resources directory and configured it in the application.properties of the Config Server:
 
-✅ Configured `application.properties`:
-```properties
-encrypt.key-store.location=classpath:config-server.p12
-encrypt.key-store.password=changeme
-encrypt.key-store.alias=config-server-key
-encrypt.key-store.secret=changeme
-spring.cloud.config.server.encrypt.enabled=true
-```
+encrypt.key-store.location=classpath:config-server.keystore  
+encrypt.key-store.password=changeme  
+encrypt.key-store.alias=config-server-key  
+encrypt.key-store.secret=changeme  
+spring.cloud.config.server.encrypt.enabled=true  
+I restarted the Config Server and used Postman to make a POST request to /encrypt with plain values like root. I received back encrypted strings like:
+I got 500 Internal Error, I couldnt find the issue but know the process how to hide the username and passowrd after i receive response from postman.
 
-⚠️ Encountered **500 Internal Server Error** when calling `/encrypt`  
-🔐 But understood how to use POST `/encrypt` to generate encrypted values
+![image](https://github.com/user-attachments/assets/495c66ab-6741-4737-a347-ae18f00b7180)
+![image](https://github.com/user-attachments/assets/0710eb6e-3d5f-41c1-9be9-296f709429a8)
 
-📸 _Screenshot_:  
-![Keystore Setup](https://github.com/user-attachments/assets/495c66ab-6741-4737-a347-ae18f00b7180)
+# Step5. Monitored My Microservices Using Prometheus and Grafana
+I integrated Prometheus and Grafana to monitor my services (SMS, Search, Gateway, Details) in real time.
+In each service, I added these dependencies in pom.xml:
 
----
+<dependency>  
+  <groupId>org.springframework.boot</groupId>  
+  <artifactId>spring-boot-starter-actuator</artifactId>  
+</dependency>  
+<dependency>  
+  <groupId>io.micrometer</groupId>  
+  <artifactId>micrometer-registry-prometheus</artifactId>  
+</dependency>  
+I configured the following properties in each service to expose metrics:
 
-##  Step 5: Monitoring with Prometheus and Grafana
+management.endpoints.web.exposure.include=*  
+management.endpoint.health.show-details=always  
+management.metrics.export.prometheus.enabled=true  
+I confirmed that each service was exposing metrics at:
 
-✅ Added Prometheus Dependencies:
-```xml
-<dependency>
-  <groupId>org.springframework.boot</groupId>
-  <artifactId>spring-boot-starter-actuator</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.micrometer</groupId>
-  <artifactId>micrometer-registry-prometheus</artifactId>
-</dependency>
-```
+http://localhost:{port}/actuator/prometheus  
+I downloaded and ran Prometheus, and created a prometheus.yml config like:
 
-✅ Enabled Metrics in `application.properties`:
-```properties
-management.endpoints.web.exposure.include=*
-management.metrics.export.prometheus.enabled=true
-```
+global:  
+  scrape_interval: 5s  
 
-✅ Created `prometheus.yml`:
-```yaml
-global:
-  scrape_interval: 5s
+scrape_configs:  
+  - job_name: 'sms'  
+    static_configs:  
+      - targets: ['localhost:8081']  
+  - job_name: 'search'  
+    static_configs:  
+      - targets: ['localhost:8300']  
+  - job_name: 'gateway'  
+    static_configs:  
+      - targets: ['localhost:8200']  
+I verified in Prometheus UI (http://localhost:9090) that all services were being scraped successfully.
 
-scrape_configs:
-  - job_name: 'sms'
-    static_configs: [{ targets: ['localhost:8081'] }]
-  - job_name: 'search'
-    static_configs: [{ targets: ['localhost:8300'] }]
-  - job_name: 'gateway'
-    static_configs: [{ targets: ['localhost:8200'] }]
-```
+## Then I installed Grafana, added Prometheus as a data source, and built a custom dashboard with panels for:
 
-✅ Grafana Dashboard Panels:
-- JVM Memory
-- CPU Usage
-- HTTP Request Rate
-- Service Health
+✅ JVM memory usage  
+✅ HTTP request rate  
+✅ CPU usage  
+✅ Service health (UP/DOWN)  
 
-📸 _Screenshots_:  
-![Prometheus](https://github.com/user-attachments/assets/5a8712b8-a142-4e30-91cb-8ee8c76b4ce9)
-![Grafana](https://github.com/user-attachments/assets/ab0f2626-b7a0-4833-88d3-2cbb0eb4772a)
+My dashboard now gives me full visibility into the health and performance of my microservices.
 
----
+## Screenshots:
 
-## 📚 Step 6: API Documentation with Swagger (OpenAPI 3)
+![image](https://github.com/user-attachments/assets/5a8712b8-a142-4e30-91cb-8ee8c76b4ce9)
+![image](https://github.com/user-attachments/assets/da622b45-bb17-4ceb-9e93-8650016f00ad)
+![image](https://github.com/user-attachments/assets/ab0f2626-b7a0-4833-88d3-2cbb0eb4772a)
 
-✅ Added Swagger Dependency:
-```xml
-<dependency>
-    <groupId>org.springdoc</groupId>
-    <artifactId>springdoc-openapi-ui</artifactId>
-    <version>1.7.0</version>
-</dependency>
-```
+# Step6. Documented My APIs Using Swagger (OpenAPI 3)
+I integrated Swagger UI (Springdoc OpenAPI) into all my microservices to generate interactive REST API documentation.
+For the time being i have done for only sms service , I added this dependency to the pom.xml:
 
-✅ Access API Docs:  
-[🔗 Swagger UI for SMS](http://localhost:8081/swagger-ui/index.html)
+<dependency>  
+    <groupId>org.springdoc</groupId>  
+    <artifactId>springdoc-openapi-ui</artifactId>  
+    <version>1.7.0</version> <!-- Compatible with Spring Boot 2.7.x -->  
+</dependency>  
 
-📸 _Screenshot_:  
-![Swagger UI](https://github.com/user-attachments/assets/290e1f84-7321-4141-87b7-005156bb932c)
+For example, my /api/students and /port endpoints were automatically visible.
+I accessed the documentation in browser via:  
+http://localhost:8081/swagger-ui/index.html   # SMS service  
+The Swagger UI:
 
----
+✅ Displayed all my endpoints grouped by controller  
+✅ Showed request/response schemas with parameters  
+✅ Allowed me to test my APIs directly from the browser without using Postman  
 
-## 📦 Step 7: Centralized Logging with Splunk
+![image](https://github.com/user-attachments/assets/290e1f84-7321-4141-87b7-005156bb932c)
 
-✅ Logs written to:
-```properties
-logging.file.name=logs/sms.log
-```
+# Step 7. Centralized Logging with Splunk Universal Forwarder and Splunk Cloud
+I configured log centralization using Splunk to collect logs from my microservices (SMS).
+I created a logs/ folder in my project root, and configured each service to write logs to its own file:
 
-✅ Splunk Universal Forwarder Config:
-**inputs.conf**
-```ini
-[monitor://C:\\path\\to\\logs]
-disabled = false
-index = main
-sourcetype = springboot
-```
-**outputs.conf**
-```ini
-[tcpout]
-defaultGroup = default-autolb-group
+# In application.properties  
+logging.file.name=logs/sms.log   # For SMS  
 
-[tcpout:default-autolb-group]
-server = prd-p-xxxx.splunkcloud.com:9997
-[tcpout-server://prd-p-xxxx.splunkcloud.com:9997]
-```
+I installed Splunk Universal Forwarder on my local machine and configured it to monitor this log directory.
 
-⚠️ Note: Splunk Cloud **trial plans do not allow TCP (9997)** by default.
+## In inputs.conf:  
+[monitor://C:\\Users\\snistal\\Desktop\\Antra_Training\\weather-master\\logs]  
+disabled = false  
+index = main  
+sourcetype = springboot  
+## In outputs.conf:  
+[tcpout]  
+defaultGroup = default-autolb-group  
+[tcpout:default-autolb-group]  
+server = prd-p-xxxx.splunkcloud.com:9997  
+[tcpout-server://prd-p-xxxx.splunkcloud.com:9997]  
+🔒 I realized that Splunk Cloud trial does not expose TCP (9997) inputs by default.
 
-📸 _Screenshot_:  
-![Splunk Log Centralization](https://github.com/user-attachments/assets/c25189f0-4af4-41b3-9a6e-4e51b09f1675)
-
----
-
-
-
----
-
-
+Screenshot:  
+![image](https://github.com/user-attachments/assets/c25189f0-4af4-41b3-9a6e-4e51b09f1675)
